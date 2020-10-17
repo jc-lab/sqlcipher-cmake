@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(project-zlib)
+project(sqlcipher-builder)
 
 include(FetchContent)
 set(SQLCIPHER_JDBC_TARGET_NAME sqlcipherjdbc CACHE STRING "sqlcipher-jdbc jni library name")
@@ -8,6 +8,11 @@ set(SQLCIPHER_JDBC_JNI         ON            CACHE BOOL "Build sqlcipher-jdbc jn
 #set(SQLCIPHER_FETCH_INFO
 #        URL      https://github.com/sqlcipher/sqlcipher/archive/v4.4.0.tar.gz
 #        URL_HASH SHA256=0924b2ae1079717954498bda78a30de20ce2a6083076b16214a711567821d148
+#        )
+#
+#set(SQLITE_JDBC_FETCH_INFO
+#        GIT_REPOSITORY https://github.com/xerial/sqlite-jdbc.git
+#        GIT_TAG        3.32.3.2
 #        )
 #
 #set(FINDJNI_JAVA_HOME_X86_32 "C:/Program Files (x86)/ojdkbuild/java-1.8.0-openjdk-1.8.0.265-1")
@@ -51,6 +56,8 @@ if (SQLCIPHER_JDBC_JNI)
     list(REMOVE_ITEM JNI_INCLUDE_DIRS "NotNeeded")
     message("JNI_LIBRARIES: ${JNI_LIBRARIES}")
     message("JNI_INCLUDE_DIRS: ${JNI_INCLUDE_DIRS}")
+    message("Java_JAVA_EXECUTABLE: ${Java_JAVA_EXECUTABLE}")
+    message("Java_JAVAC_EXECUTABLE: ${Java_JAVAC_EXECUTABLE}")
 endif(SQLCIPHER_JDBC_JNI)
 
 FetchContent_Declare(
@@ -59,6 +66,53 @@ FetchContent_Declare(
 )
 FetchContent_GetProperties(fetch)
 FetchContent_Populate(fetch)
+
+message("SQLite-JDBC fetch start")
+FetchContent_Declare(
+        fetch_sqlite_jdbc
+        ${SQLITE_JDBC_FETCH_INFO}
+)
+FetchContent_GetProperties(fetch_sqlite_jdbc)
+FetchContent_Populate(fetch_sqlite_jdbc)
+
+if(SQLCIPHER_JDBC_JNI)
+    add_custom_command(
+            OUTPUT
+                ${fetch_sqlite_jdbc_BINARY_DIR}/org_sqlite_core_NativeDB.h
+            WORKING_DIRECTORY
+                ${fetch_sqlite_jdbc_SOURCE_DIR}
+            COMMAND
+                ${Java_JAVAC_EXECUTABLE}
+                -d "${fetch_sqlite_jdbc_BINARY_DIR}"
+                -sourcepath "src/main/java"
+                -h "${fetch_sqlite_jdbc_BINARY_DIR}"
+                src/main/java/org/sqlite/core/NativeDB.java
+    )
+    add_custom_command(
+            OUTPUT
+                ${CMAKE_CURRENT_BINARY_DIR}/jni_module.c
+                ${CMAKE_CURRENT_BINARY_DIR}/NativeDB.h
+                ${CMAKE_CURRENT_BINARY_DIR}/NativeDB.c
+            DEPENDS
+                ${fetch_sqlite_jdbc_BINARY_DIR}/org_sqlite_core_NativeDB.h
+            WORKING_DIRECTORY
+                ${CMAKE_CURRENT_SOURCE_DIR}/jdbc/sqlite-jdbc-patcher
+            COMMAND
+                ${Java_JAVA_EXECUTABLE}
+                SqliteJdbcPatcher
+                --sqlite-jdbc-src=${fetch_sqlite_jdbc_SOURCE_DIR}
+                --nativedb-h-file=${fetch_sqlite_jdbc_BINARY_DIR}/org_sqlite_core_NativeDB.h
+                --out=${CMAKE_CURRENT_BINARY_DIR}
+                --jni-module-input-file=${CMAKE_CURRENT_SOURCE_DIR}/jdbc/sqlite-jdbc-patcher/jni_module.in.c
+                --module-name=${SQLCIPHER_JDBC_TARGET_NAME}
+    )
+
+    set(SQLITE_JDBC_SRC_FILES
+            ${CMAKE_CURRENT_BINARY_DIR}/jni_module.c
+            ${CMAKE_CURRENT_BINARY_DIR}/NativeDB.h
+            ${CMAKE_CURRENT_BINARY_DIR}/NativeDB.c
+            )
+endif()
 
 if (MSVC)
     file(RELATIVE_PATH RELATIVE_SRC_PATH ${CMAKE_CURRENT_BINARY_DIR} ${fetch_SOURCE_DIR})
@@ -148,11 +202,6 @@ if (MSVC)
     )
 
     if (SQLCIPHER_JDBC_JNI)
-        set(SQLITE_JDBC_SRC_FILES
-                ${CMAKE_CURRENT_SOURCE_DIR}/jdbc/NativeDB.h
-                ${CMAKE_CURRENT_SOURCE_DIR}/jdbc/NativeDB.c
-                ${CMAKE_CURRENT_SOURCE_DIR}/jdbc/jni_module.c
-                )
         add_library(${SQLCIPHER_JDBC_TARGET_NAME} SHARED
                 ${CMAKE_CURRENT_BINARY_DIR}/sqlite3.c
                 ${SQLITE_JDBC_SRC_FILES}

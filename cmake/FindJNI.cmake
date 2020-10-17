@@ -131,6 +131,7 @@ if(FINDJNI_JAVA_HOME_EXPLICIT)
 endif()
 
 set(JAVA_AWT_LIBRARY_DIRECTORIES)
+set(JAVA_EXE_DIRECTORIES)
 if(FINDJNI_JAVA_HOME)
     JAVA_APPEND_LIBRARY_DIRECTORIES(JAVA_AWT_LIBRARY_DIRECTORIES
             ${FINDJNI_JAVA_HOME}/jre/lib/{libarch}
@@ -138,6 +139,10 @@ if(FINDJNI_JAVA_HOME)
             ${FINDJNI_JAVA_HOME}/lib/{libarch}
             ${FINDJNI_JAVA_HOME}/lib
             ${FINDJNI_JAVA_HOME}
+            )
+    JAVA_APPEND_LIBRARY_DIRECTORIES(JAVA_EXE_DIRECTORIES
+            ${FINDJNI_JAVA_HOME}/jre/bin
+            ${FINDJNI_JAVA_HOME}/bin
             )
 endif()
 
@@ -335,6 +340,30 @@ unset(_JNI_FRAMEWORK_JVM)
 unset(_JNI_FRAMEWORK_JAWT)
 unset(_JNI_NORMAL_JVM)
 unset(_JNI_NORMAL_JAWT)
+
+set(_JAVA_PATHS
+        /usr/lib/java/bin
+        /usr/share/java/bin
+        /usr/local/java/bin
+        /usr/local/java/share/bin
+        /usr/java/j2sdk1.4.2_04
+        /usr/lib/j2sdk1.4-sun/bin
+        /usr/java/j2sdk1.4.2_09/bin
+        /usr/lib/j2sdk1.5-sun/bin
+        /opt/sun-jdk-1.5.0.04/bin
+        /usr/local/jdk-1.7.0/bin
+        /usr/local/jdk-1.6.0/bin
+        )
+find_program(Java_JAVA_EXECUTABLE
+        NAMES java
+        NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH
+        PATHS ${JAVA_EXE_DIRECTORIES} ${_JAVA_PATHS}
+        )
+find_program(Java_JAVAC_EXECUTABLE
+        NAMES javac
+        NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH
+        PATHS ${JAVA_EXE_DIRECTORIES} ${_JAVA_PATHS}
+        )
 
 # Find headers matching the library.
 if("${JAVA_JVM_LIBRARY};${JAVA_AWT_LIBRARY};" MATCHES "(/JavaVM.framework|-framework JavaVM);")
