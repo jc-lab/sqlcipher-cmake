@@ -228,6 +228,7 @@ set(_JNI_JAVA_DIRECTORIES_BASE
         )
 
 set(_JNI_JAVA_AWT_LIBRARY_TRIES)
+set(_JNI_JAVA_EXE_TRIES)
 set(_JNI_JAVA_INCLUDE_TRIES)
 
 foreach(_java_dir IN LISTS _JNI_JAVA_DIRECTORIES_BASE)
@@ -238,6 +239,11 @@ foreach(_java_dir IN LISTS _JNI_JAVA_DIRECTORIES_BASE)
             ${_java_dir}/lib
             ${_java_dir}
             )
+    list(APPEND _JNI_JAVA_EXE_TRIES
+            ${_java_dir}/jre/bin
+            ${_java_dir}/bin
+            ${_java_dir}
+            )
     list(APPEND _JNI_JAVA_INCLUDE_TRIES
             ${_java_dir}/include
             )
@@ -245,6 +251,9 @@ endforeach()
 
 JAVA_APPEND_LIBRARY_DIRECTORIES(JAVA_AWT_LIBRARY_DIRECTORIES
         ${_JNI_JAVA_AWT_LIBRARY_TRIES}
+        )
+JAVA_APPEND_LIBRARY_DIRECTORIES(JAVA_EXE_DIRECTORIES
+        ${_JNI_JAVA_EXE_TRIES}
         )
 
 endif(NOT FINDJNI_JAVA_HOME)
@@ -341,28 +350,15 @@ unset(_JNI_FRAMEWORK_JAWT)
 unset(_JNI_NORMAL_JVM)
 unset(_JNI_NORMAL_JAWT)
 
-set(_JAVA_PATHS
-        /usr/lib/java/bin
-        /usr/share/java/bin
-        /usr/local/java/bin
-        /usr/local/java/share/bin
-        /usr/java/j2sdk1.4.2_04
-        /usr/lib/j2sdk1.4-sun/bin
-        /usr/java/j2sdk1.4.2_09/bin
-        /usr/lib/j2sdk1.5-sun/bin
-        /opt/sun-jdk-1.5.0.04/bin
-        /usr/local/jdk-1.7.0/bin
-        /usr/local/jdk-1.6.0/bin
-        )
 find_program(Java_JAVA_EXECUTABLE
         NAMES java
         NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH
-        PATHS ${JAVA_EXE_DIRECTORIES} ${_JAVA_PATHS}
+        PATHS ${JAVA_EXE_DIRECTORIES}
         )
 find_program(Java_JAVAC_EXECUTABLE
         NAMES javac
         NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH
-        PATHS ${JAVA_EXE_DIRECTORIES} ${_JAVA_PATHS}
+        PATHS ${JAVA_EXE_DIRECTORIES}
         )
 
 # Find headers matching the library.

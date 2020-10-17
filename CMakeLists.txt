@@ -234,5 +234,94 @@ if (MSVC)
     install(FILES ${CMAKE_CURRENT_BINARY_DIR}/sqlite3.exe DESTINATION "bin")
     install(FILES ${CMAKE_CURRENT_BINARY_DIR}/sqlite3.dll DESTINATION "lib")
 else()
+    add_library(sqlcipher_dummy_first ${CMAKE_CURRENT_SOURCE_DIR}/dummy.cc)
+    target_link_libraries(sqlcipher_dummy_first
+            PRIVATE
+            OpenSSL::Crypto
+            )
 
+    set(SQLITE_CFLAGS)
+    set(SQLITE_LDFLAGS)
+    list(APPEND SQLITE_CFLAGS -DSQLITE_HAS_CODEC=1)
+    list(APPEND SQLITE_CFLAGS -I$<TARGET_PROPERTY:OpenSSL::Crypto,INTERFACE_INCLUDE_DIRECTORIES>)
+    list(APPEND SQLITE_LDFLAGS $<TARGET_PROPERTY:OpenSSL::Crypto,IMPORTED_LOCATION>)
+
+    string(JOIN " " SQLITE_CFLAGS_STR  ${SQLITE_CFLAGS})
+    string(JOIN " " SQLITE_LDFLAGS_STR ${SQLITE_LDFLAGS})
+
+    add_custom_command(
+            OUTPUT ${fetch_SOURCE_DIR}/config.h
+            COMMAND ${CMAKE_COMMAND} -E echo ./configure --enable-tempstore=yes --disable-tcl CFLAGS=${SQLITE_CFLAGS_STR} LDFLAGS=${SQLITE_LDFLAGS_STR}
+            COMMAND ./configure --enable-tempstore=yes --disable-tcl CFLAGS=${SQLITE_CFLAGS_STR} LDFLAGS=${SQLITE_LDFLAGS_STR}
+            WORKING_DIRECTORY ${fetch_SOURCE_DIR}
+            DEPENDS sqlcipher_dummy_first
+    )
+    add_custom_target(
+            sqlcipher_configure
+            DEPENDS ${fetch_SOURCE_DIR}/config.h
+    )
+    add_custom_command(
+            OUTPUT ${fetch_SOURCE_DIR}/sqlcipher
+            COMMAND make
+            WORKING_DIRECTORY ${fetch_SOURCE_DIR}
+            DEPENDS sqlcipher_configure
+    )
+    add_custom_target(
+            sqlcipher_make
+            DEPENDS ${fetch_SOURCE_DIR}/sqlcipher
+    )
+    add_custom_command(
+            OUTPUT ${fetch_BINARY_DIR}/usr/local/bin/sqlcipher
+            COMMAND make install DESTDIR=${fetch_BINARY_DIR}
+            WORKING_DIRECTORY ${fetch_SOURCE_DIR}
+            DEPENDS sqlcipher_make
+    )
+    add_custom_target(
+            sqlcipher_inst
+            DEPENDS ${fetch_BINARY_DIR}/usr/local/bin/sqlcipher
+    )
+
+    add_library(sqlcipher_dummy_second ${CMAKE_CURRENT_SOURCE_DIR}/dummy.cc)
+    add_dependencies(sqlcipher_dummy_second sqlcipher_inst)
+
+    install(PROGRAMS
+            ${fetch_BINARY_DIR}/usr/local/bin/sqlcipher
+            DESTINATION "bin")
+    install(DIRECTORY
+            ${fetch_BINARY_DIR}/usr/local/lib/
+            DESTINATION "lib")
+    install(DIRECTORY
+            ${fetch_BINARY_DIR}/usr/local/include/sqlcipher/
+            DESTINATION "include")
+
+    if (SQLCIPHER_JDBC_JNI)
+        set(SQLITE_COMPILE_DEFINITIONS
+                SQLITE_HAS_CODEC
+                SQLCIPHER_CRYPTO_OPENSSL
+                SQLITE_OS_UNIX=1
+                )
+
+        add_library(${SQLCIPHER_JDBC_TARGET_NAME} SHARED
+                ${fetch_SOURCE_DIR}/sqlite3.c
+                ${SQLITE_JDBC_SRC_FILES}
+                )
+        add_compile_definitions(${SQLCIPHER_JDBC_TARGET_NAME}
+                PRIVATE
+                ${SQLITE_COMPILE_DEFINITIONS}
+                )
+        target_link_libraries(${SQLCIPHER_JDBC_TARGET_NAME}
+                PRIVATE
+                ${JNI_LIBRARIES}
+                OpenSSL::Crypto
+                )
+        target_include_directories(${SQLCIPHER_JDBC_TARGET_NAME}
+                PRIVATE
+                ${JNI_INCLUDE_DIRS}
+                ${fetch_SOURCE_DIR}
+                ${fetch_SOURCE_DIR}/src
+                ${CMAKE_CURRENT_BINARY_DIR}
+                )
+
+        install(TARGETS ${SQLCIPHER_JDBC_TARGET_NAME})
+    endif(SQLCIPHER_JDBC_JNI)
 endif()

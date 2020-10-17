@@ -6,4 +6,5 @@ This is used from [libraries-builder](https://github.com/jc-lab/libraries-builde
 
 # TODO
 
+* [X] Linux support (2020.10.17)
 * [ ] sqlitejdbc jar build
