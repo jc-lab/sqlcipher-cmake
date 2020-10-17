@@ -261,7 +261,9 @@ else()
             DEPENDS ${fetch_SOURCE_DIR}/config.h
     )
     add_custom_command(
-            OUTPUT ${fetch_SOURCE_DIR}/sqlcipher
+            OUTPUT
+                ${fetch_SOURCE_DIR}/sqlcipher
+                ${fetch_SOURCE_DIR}/sqlite3.c
             COMMAND make
             WORKING_DIRECTORY ${fetch_SOURCE_DIR}
             DEPENDS sqlcipher_configure
@@ -305,6 +307,7 @@ else()
                 ${fetch_SOURCE_DIR}/sqlite3.c
                 ${SQLITE_JDBC_SRC_FILES}
                 )
+        add_dependencies(${SQLCIPHER_JDBC_TARGET_NAME} sqlcipher_make)
         add_compile_definitions(${SQLCIPHER_JDBC_TARGET_NAME}
                 PRIVATE
                 ${SQLITE_COMPILE_DEFINITIONS}
